@@ -123,7 +123,7 @@ def main():
         print("No headlines retrieved.")
         return
 
-    summary = gemini_filter(headlines)
+    summary = "🚨 Test alert from news bot"
 
     if summary == "NONE":
         print("No major news detected.")
