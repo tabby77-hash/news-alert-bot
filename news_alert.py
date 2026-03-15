@@ -95,7 +95,7 @@ def main():
         print("Duplicate news")
         return
 
-    send_whatsapp(summary)
+    send_whatsapp("Test message from my news bot!")
 
     print("Alert sent:", summary)
 
