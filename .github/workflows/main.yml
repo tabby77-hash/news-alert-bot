@@ -10,13 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # 2️⃣ Restore cache for last_news.txt
       - name: Restore last news cache
-        id: cache
+        id: restore-cache
         uses: actions/cache@v3
         with:
           path: last_news.txt
