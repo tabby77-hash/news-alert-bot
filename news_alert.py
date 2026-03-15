@@ -4,34 +4,47 @@ import os
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 PHONE = os.getenv("WHATSAPP_NUMBER")
-CALLMEBOT_KEY = os.getenv("CALLMEBOT_KEY")
+TEXTMEBOT_KEY = os.getenv("TEXTMEBOT_KEY")
 
 keywords = "Pakistan OR War OR Breaking"
 
+
 def get_news():
+
     url = f"https://newsapi.org/v2/everything?q={keywords}&language=en&sortBy=publishedAt&pageSize=5&apiKey={NEWS_API_KEY}"
+
     r = requests.get(url).json()
-    headlines = [article["title"] for article in r["articles"]]
+
+    headlines = []
+
+    for article in r.get("articles", []):
+        headlines.append(article["title"])
+
     return headlines
 
 
 def gemini_filter(headlines):
+
     prompt = f"""
-You are a news intelligence filter.
-From the headlines below, detect if any represent MAJOR global or Pakistan related breaking news.
-Ignore normal politics or minor stories.
+You are a global news intelligence filter.
+
+From the following headlines detect ONLY major breaking news events
+like war escalation, national emergency, military conflict or major disaster.
+
+If nothing important return ONLY the word NONE.
 
 Headlines:
 {headlines}
 
-If nothing major → return "NONE".
-If major → summarize into ONE short alert sentence.
+If major news exists summarize it into ONE short sentence.
 """
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
+        "contents": [
+            {"parts": [{"text": prompt}]}
+        ]
     }
 
     r = requests.post(url, json=payload)
@@ -44,7 +57,8 @@ If major → summarize into ONE short alert sentence.
         return "NONE"
 
 
-def check_duplicate(message):
+def is_duplicate(message):
+
     try:
         with open("last_news.txt", "r") as f:
             last = f.read().strip()
@@ -61,7 +75,9 @@ def check_duplicate(message):
 
 
 def send_whatsapp(message):
-    url = f"https://api.callmebot.com/whatsapp.php?phone={PHONE}&text={message}&apikey={CALLMEBOT_KEY}"
+
+    url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={message}&apikey={TEXTMEBOT_KEY}"
+
     requests.get(url)
 
 
@@ -75,8 +91,8 @@ def main():
         print("No major news")
         return
 
-    if check_duplicate(summary):
-        print("Duplicate alert")
+    if is_duplicate(summary):
+        print("Duplicate news")
         return
 
     send_whatsapp(summary)
