@@ -100,5 +100,5 @@ def main():
     print("Alert sent:", summary)
 
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
