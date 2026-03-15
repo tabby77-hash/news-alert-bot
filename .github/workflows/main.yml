@@ -7,26 +7,41 @@ on:
 
 jobs:
   run-bot:
-
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      # 2️⃣ Restore cache for last_news.txt
+      - name: Restore last news cache
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: last_news.txt
+          key: last-news-cache
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+      # 3️⃣ Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+      # 4️⃣ Install dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-    - name: Run bot
-      env:
-        NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        WHATSAPP_NUMBER: ${{ secrets.WHATSAPP_NUMBER }}
-        TEXTMEBOT_KEY: ${{ secrets.TEXTMEBOT_KEY }}
-      run: python news_alert.py
+      # 5️⃣ Run bot
+      - name: Run bot
+        env:
+          WHATSAPP_NUMBER: ${{ secrets.WHATSAPP_NUMBER }}
+          TEXTMEBOT_KEY: ${{ secrets.TEXTMEBOT_KEY }}
+        run: python news_alert.py
+
+      # 6️⃣ Save cache back for next run
+      - name: Save last news cache
+        uses: actions/cache@v3
+        with:
+          path: last_news.txt
+          key: last-news-cache
