@@ -2,16 +2,16 @@ import requests
 import feedparser
 import os
 import urllib.parse
-import subprocess
 
 RSS_URL = "https://www.dawn.com/feeds/home"
+LAST_FILE = "last_news.txt"
 
 PHONE = os.getenv("WHATSAPP_NUMBER")
 TEXTMEBOT_KEY = os.getenv("TEXTMEBOT_KEY")
 
 
 def get_latest_news():
-
+    """Fetch the latest news headline from Dawn RSS feed."""
     print("Checking Dawn RSS...")
 
     feed = feedparser.parse(RSS_URL)
@@ -21,60 +21,52 @@ def get_latest_news():
         return None, None
 
     article = feed.entries[0]
-
-    headline = article.title
-    link = article.link
+    headline = article.title.strip()
+    link = article.link.strip()
 
     return headline, link
 
 
+def read_last_news():
+    """Return the last saved headline, or empty string if none."""
+    if os.path.exists(LAST_FILE):
+        with open(LAST_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
+
+def save_last_news(headline):
+    """Save the latest headline safely."""
+    with open(LAST_FILE, "w", encoding="utf-8") as f:
+        f.write(headline.strip())
+
+
 def is_duplicate(headline):
-
-    try:
-        with open("last_news.txt", "r") as f:
-            last = f.read().strip()
-    except:
-        last = ""
-
+    """Check if the headline is the same as last run."""
+    last = read_last_news()
     if headline == last:
-        print("Duplicate headline.")
+        print("Duplicate headline detected.")
         return True
 
     save_last_news(headline)
     return False
 
 
-def save_last_news(headline):
-
-    with open("last_news.txt", "w") as f:
-        f.write(headline)
-
-    # configure git
-    subprocess.run(["git", "config", "--global", "user.name", "news-bot"])
-    subprocess.run(["git", "config", "--global", "user.email", "bot@example.com"])
-
-    # commit file
-    subprocess.run(["git", "add", "last_news.txt"])
-    subprocess.run(["git", "commit", "-m", "update last news"], check=False)
-    subprocess.run(["git", "push"])
-
-
 def send_whatsapp(message):
-
+    """Send the message to WhatsApp using TextMeBot API."""
     encoded = urllib.parse.quote(message)
-
     url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={encoded}&apikey={TEXTMEBOT_KEY}"
 
-    r = requests.get(url)
-
-    print("Status:", r.status_code)
-    print("Response:", r.text)
+    try:
+        r = requests.get(url)
+        print("Status:", r.status_code)
+        print("Response:", r.text)
+    except Exception as e:
+        print("Error sending WhatsApp message:", e)
 
 
 def main():
-
     headline, link = get_latest_news()
-
     if not headline:
         return
 
@@ -82,9 +74,7 @@ def main():
         return
 
     message = f"📰 Dawn Breaking News:\n{headline}\n\nRead more:\n{link}"
-
     send_whatsapp(message)
-
     print("Alert sent:", headline)
 
 
