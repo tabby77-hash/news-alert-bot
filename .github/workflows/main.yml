@@ -2,7 +2,7 @@ name: News Alert Bot
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/30 * * * *"  # every 30 minutes
   workflow_dispatch:
 
 jobs:
@@ -14,34 +14,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Restore cache for last_news.txt
-      - name: Restore last news cache
-        id: restore-cache
-        uses: actions/cache@v3
-        with:
-          path: last_news.txt
-          key: last-news-cache
-
-      # 3️⃣ Setup Python
+      # 2️⃣ Setup Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      # 4️⃣ Install dependencies
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # 5️⃣ Run bot
+      # 4️⃣ Run bot
       - name: Run bot
         env:
           WHATSAPP_NUMBER: ${{ secrets.WHATSAPP_NUMBER }}
           TEXTMEBOT_KEY: ${{ secrets.TEXTMEBOT_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}       # GitHub token for committing last_news.json
         run: python news_alert.py
-
-      # 6️⃣ Save cache back for next run
-      - name: Save last news cache
-        uses: actions/cache@v3
-        with:
-          path: last_news.txt
-          key: last-news-cache
