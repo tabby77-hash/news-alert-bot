@@ -1,5 +1,6 @@
 import requests
 import os
+import urllib.parse
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -13,14 +14,24 @@ def get_news():
 
     url = f"https://newsapi.org/v2/everything?q={keywords}&language=en&sortBy=publishedAt&pageSize=5&apiKey={NEWS_API_KEY}"
 
-    r = requests.get(url).json()
+    print("Fetching news...")
 
-    headlines = []
+    try:
+        r = requests.get(url)
+        data = r.json()
 
-    for article in r.get("articles", []):
-        headlines.append(article["title"])
+        headlines = []
 
-    return headlines
+        for article in data.get("articles", []):
+            headlines.append(article["title"])
+
+        print("Headlines:", headlines)
+
+        return headlines
+
+    except Exception as e:
+        print("News API error:", e)
+        return []
 
 
 def gemini_filter(headlines):
@@ -47,13 +58,22 @@ If major news exists summarize it into ONE short sentence.
         ]
     }
 
-    r = requests.post(url, json=payload)
-    result = r.json()
+    print("Sending headlines to Gemini...")
 
     try:
+        r = requests.post(url, json=payload)
+        result = r.json()
+
         text = result["candidates"][0]["content"]["parts"][0]["text"]
-        return text.strip()
-    except:
+
+        summary = text.strip()
+
+        print("Gemini result:", summary)
+
+        return summary
+
+    except Exception as e:
+        print("Gemini API error:", e)
         return "NONE"
 
 
@@ -66,6 +86,7 @@ def is_duplicate(message):
         last = ""
 
     if message == last:
+        print("Duplicate alert detected.")
         return True
 
     with open("last_news.txt", "w") as f:
@@ -76,28 +97,44 @@ def is_duplicate(message):
 
 def send_whatsapp(message):
 
-    url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={message}&apikey={TEXTMEBOT_KEY}"
+    try:
+        encoded_message = urllib.parse.quote(message)
 
-    requests.get(url)
+        url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={encoded_message}&apikey={TEXTMEBOT_KEY}"
+
+        print("Sending WhatsApp message...")
+
+        r = requests.get(url)
+
+        print("Status Code:", r.status_code)
+        print("Response:", r.text)
+
+    except Exception as e:
+        print("WhatsApp sending error:", e)
 
 
 def main():
 
+    print("Bot started...")
+
     headlines = get_news()
+
+    if not headlines:
+        print("No headlines retrieved.")
+        return
 
     summary = gemini_filter(headlines)
 
     if summary == "NONE":
-        print("No major news")
+        print("No major news detected.")
         return
 
     if is_duplicate(summary):
-        print("Duplicate news")
         return
 
-    send_whatsapp("Test message from my news bot!")
+    send_whatsapp(summary)
 
-    print("Alert sent:", summary)
+    print("Alert sent successfully.")
 
 
 if __name__ == "__main__":
