@@ -2,24 +2,40 @@ import requests
 import feedparser
 import os
 import urllib.parse
+import json
+import subprocess
 
 RSS_URL = "https://www.dawn.com/feeds/home"
-LAST_FILE = "last_news.txt"
+LAST_FILE = "last_news.json"
 
 PHONE = os.getenv("WHATSAPP_NUMBER")
 TEXTMEBOT_KEY = os.getenv("TEXTMEBOT_KEY")
+GH_TOKEN = os.getenv("GH_TOKEN")
 
 
 def read_last_news():
     if os.path.exists(LAST_FILE):
         with open(LAST_FILE, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    return ""
+            try:
+                return set(json.load(f))
+            except:
+                return set()
+    return set()
 
 
-def save_last_news(headline):
+def save_last_news(headlines):
     with open(LAST_FILE, "w", encoding="utf-8") as f:
-        f.write(headline.strip())
+        json.dump(list(headlines), f)
+
+
+def commit_last_news():
+    subprocess.run(["git", "config", "--global", "user.name", "news-bot"])
+    subprocess.run(["git", "config", "--global", "user.email", "bot@example.com"])
+    subprocess.run(["git", "add", LAST_FILE])
+    subprocess.run(["git", "commit", "-m", "Update last news"], check=False)
+    # push using token
+    repo_url = f"https://{GH_TOKEN}@github.com/{os.getenv('GITHUB_REPOSITORY')}.git"
+    subprocess.run(["git", "push", repo_url, "HEAD:main"], check=False)
 
 
 def send_whatsapp(message):
@@ -34,27 +50,30 @@ def send_whatsapp(message):
 
 
 def main():
-    print("Fetching RSS feed...")
     feed = feedparser.parse(RSS_URL)
     if not feed.entries:
         print("No entries found in RSS.")
         return
 
     last_sent = read_last_news()
-    print("Last sent headline:", last_sent)
+    print("Previously sent headlines:", last_sent)
 
-    # Look for the first new headline
+    new_sent = set()
     for article in feed.entries:
         headline = article.title.strip()
         link = article.link.strip()
-        if headline != last_sent:
+        if headline not in last_sent:
             message = f"📰 Dawn Breaking News:\n{headline}\n\nRead more:\n{link}"
             send_whatsapp(message)
-            save_last_news(headline)
-            print("New headline sent:", headline)
-            return  # stop after sending first new headline
+            new_sent.add(headline)
+            print("Sent headline:", headline)
+            break  # send only one new headline per run
 
-    print("No new headlines to send.")
+    # update last_news.json
+    all_sent = last_sent.union(new_sent)
+    save_last_news(all_sent)
+    if new_sent:
+        commit_last_news()
 
 
 if __name__ == "__main__":
