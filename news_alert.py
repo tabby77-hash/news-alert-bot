@@ -1,35 +1,30 @@
 import requests
+import feedparser
 import os
 import urllib.parse
 
-NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+RSS_URL = "https://www.dawn.com/feeds/home"
+
 PHONE = os.getenv("WHATSAPP_NUMBER")
 TEXTMEBOT_KEY = os.getenv("TEXTMEBOT_KEY")
 
 
-def get_news():
+def get_latest_news():
 
-    url = f"https://newsapi.org/v2/top-headlines?sources=dawn-news&apiKey={NEWS_API_KEY}"
+    print("Checking Dawn RSS...")
 
-    print("Fetching Dawn headlines...")
+    feed = feedparser.parse(RSS_URL)
 
-    try:
-        r = requests.get(url)
-        data = r.json()
-
-        articles = data.get("articles", [])
-
-        if not articles:
-            return None, None
-
-        headline = articles[0]["title"]
-        link = articles[0]["url"]
-
-        return headline, link
-
-    except Exception as e:
-        print("News API error:", e)
+    if not feed.entries:
+        print("No news found.")
         return None, None
+
+    article = feed.entries[0]
+
+    headline = article.title
+    link = article.link
+
+    return headline, link
 
 
 def is_duplicate(message):
@@ -52,38 +47,31 @@ def is_duplicate(message):
 
 def send_whatsapp(message):
 
-    try:
-        encoded_message = urllib.parse.quote(message)
+    encoded = urllib.parse.quote(message)
 
-        url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={encoded_message}&apikey={TEXTMEBOT_KEY}"
+    url = f"https://api.textmebot.com/send.php?recipient={PHONE}&text={encoded}&apikey={TEXTMEBOT_KEY}"
 
-        r = requests.get(url)
+    r = requests.get(url)
 
-        print("Status:", r.status_code)
-        print("Response:", r.text)
-
-    except Exception as e:
-        print("WhatsApp error:", e)
+    print("Status:", r.status_code)
+    print("Response:", r.text)
 
 
 def main():
 
-    print("Bot started...")
-
-    headline, link = get_news()
+    headline, link = get_latest_news()
 
     if not headline:
-        print("No headline found.")
         return
 
     if is_duplicate(headline):
         return
 
-    message = f"📰 Dawn Headline:\n{headline}\n\nRead more: {link}"
+    message = f"📰 Dawn Breaking News:\n{headline}\n\nRead more:\n{link}"
 
     send_whatsapp(message)
 
-    print("Headline sent:", headline)
+    print("Alert sent:", headline)
 
 
 if __name__ == "__main__":
