@@ -2,6 +2,7 @@ import requests
 import feedparser
 import os
 import urllib.parse
+import subprocess
 
 RSS_URL = "https://www.dawn.com/feeds/home"
 
@@ -27,7 +28,7 @@ def get_latest_news():
     return headline, link
 
 
-def is_duplicate(message):
+def is_duplicate(headline):
 
     try:
         with open("last_news.txt", "r") as f:
@@ -35,14 +36,27 @@ def is_duplicate(message):
     except:
         last = ""
 
-    if message == last:
+    if headline == last:
         print("Duplicate headline.")
         return True
 
-    with open("last_news.txt", "w") as f:
-        f.write(message)
-
+    save_last_news(headline)
     return False
+
+
+def save_last_news(headline):
+
+    with open("last_news.txt", "w") as f:
+        f.write(headline)
+
+    # configure git
+    subprocess.run(["git", "config", "--global", "user.name", "news-bot"])
+    subprocess.run(["git", "config", "--global", "user.email", "bot@example.com"])
+
+    # commit file
+    subprocess.run(["git", "add", "last_news.txt"])
+    subprocess.run(["git", "commit", "-m", "update last news"], check=False)
+    subprocess.run(["git", "push"])
 
 
 def send_whatsapp(message):
